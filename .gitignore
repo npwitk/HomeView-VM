@@ -1,0 +1,24 @@
+# Allow-list: only the paths below are published. Everything else in this
+# folder is Apple software (OTA, IPSWs, extracted binaries, shared cache,
+# device trees, disassembly), data pulled out of a VM (logs, crash reports,
+# plists, keybags, screenshots) or local build output, and stays local.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/patches/
+!/scripts/
+
+# Compiled helper; built locally from scripts/dsc_extract.c.
+/scripts/dsc_extract
+
+# Never commit these, even if one lands inside an allowed folder.
+.DS_Store
+*.ips
+*.log
+*.aea
+*.ipsw
+*.im4p
+*.kb
+*.logarchive/
+*.otool.txt

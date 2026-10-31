@@ -1,0 +1,246 @@
+diff --git a/VPhoneDaemon/Daemon/GuestSetupAssistantState.swift b/VPhoneDaemon/Daemon/GuestSetupAssistantState.swift
+index 2736574..0dd7fb9 100644
+--- a/VPhoneDaemon/Daemon/GuestSetupAssistantState.swift
++++ b/VPhoneDaemon/Daemon/GuestSetupAssistantState.swift
+@@ -1,7 +1,7 @@
+ /// Read-only completion policy. Apple TV uses its TV setup version and
+ /// completion flag; iPhone and HomePod retain the existing iOS-version policy.
+ struct GuestSetupAssistantState {
+-    static func usesTVPolicy(machine: String) -> Bool { machine.hasPrefix("AppleTV") }
++    static func usesTVPolicy(machine: String) -> Bool { machine.hasPrefix("AppleTV") || machine.hasPrefix("HomeAccessory") }
+ 
+     let setupDone: Bool
+     let version: Int?
+diff --git a/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestPatchResolution.swift b/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestPatchResolution.swift
+index b925ff6..d0bd5b8 100644
+--- a/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestPatchResolution.swift
++++ b/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestPatchResolution.swift
+@@ -45,6 +45,7 @@ public enum FirmwareGuestPatchResolution {
+         "system-extensions-boot-gpu_bundle",
+         FirmwareGuestSystemPatchSet.tvOTAUserland,
+         FirmwareGuestSystemPatchSet.tvSetupDisplayLookup,
++        FirmwareGuestSystemPatchSet.homeViewShellLookup,
+         FirmwareGuestSystemPatchSet.tvSetupFocus,
+         FirmwareGuestSystemPatchSet.tvLocalActivation,
+         FirmwareGuestSystemPatchSet.tvLegacySetup,
+diff --git a/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestSystemPatchSet.swift b/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestSystemPatchSet.swift
+index 2136288..d9ae885 100644
+--- a/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestSystemPatchSet.swift
++++ b/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwareGuestSystemPatchSet.swift
+@@ -53,6 +53,7 @@ public enum FirmwareGuestSystemPatchSet {
+     public static let jetsamDisableAllowed = "system-jetsamproperties-cfw-disable_allowed"
+     public static let tvTPRO = "system-dyld-exp-tv_tpro"
+     public static let tvSetupDisplayLookup = "system-setupbackground-exp-pineboard_lookup"
++    public static let homeViewShellLookup = "system-breadboard-exp-backboard_lookups"
+     public static let tvLegacySetup = "system-tv-exp-legacy_setup"
+     public static let tvSetupFocus = "system-setup-exp-deferred_focus"
+     public static let tvSetupFocusLibrary = "/usr/lib/libvphonetvsetupfocus.dylib"
+@@ -168,6 +169,13 @@ public enum FirmwareGuestSystemPatchSet {
+                 target: .guestEntitlements(path: "/Applications/SetupBackground.app/SetupBackground"),
+                 applicability: VPhonePatchApplicability(iOSBase: .release(major: 27, minor: 2)),
+             ),
++            VPhonePatchDeclaration(
++                identifier: homeViewShellLookup,
++                title: "HomeView shell and guest persona lookups",
++                summary: "Lets HomeView's BreadBoard and userprofilesd look up the services their temporary-sandbox profile denies on the cloudOS 26.4 kernel. Without them BKSDisplayServicesStart traps, userprofilesd cannot create the guest persona through UserManager, and BreadBoard stops waiting for it; the guest stays on the Apple logo.",
++                target: .guestEntitlements(path: "/System/Library/CoreServices/BreadBoard.app/BreadBoard"),
++                applicability: VPhonePatchApplicability(iOSBase: .release(major: 27, minor: 2)),
++            ),
+             VPhonePatchDeclaration(
+                 identifier: tvOTAUserland,
+                 title: "Apple TV 4K userland from OTA",
+diff --git a/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwarePatchSetCatalog.swift b/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwarePatchSetCatalog.swift
+index 6349641..2210393 100644
+--- a/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwarePatchSetCatalog.swift
++++ b/VPhoneExecutable/VPhoneCommand/FirmwarePatcher/PatchSets/FirmwarePatchSetCatalog.swift
+@@ -69,7 +69,7 @@ public enum FirmwarePatchSetCatalog {
+             .union(hypervisorConcealmentPatches)
+             .union(experimentalIdentityPatches)
+             .union([FirmwareGuestSystemPatchSet.otaUserland, FirmwareGuestSystemPatchSet.homePodTopCap, FirmwareGuestSystemPatchSet.homePodSetupBypass, FirmwareGuestSystemPatchSet.homePodAirPlayVM, FirmwareGuestSystemPatchSet.homePodAudioProduct, FirmwareGuestSystemPatchSet.homePodWelcome, FirmwareGuestSystemPatchSet.homePodSiriSpeech, FirmwareGuestSystemPatchSet.homePodOTAUserland, FirmwareGuestSystemPatchSet.homePodSoundGlow, FirmwareGuestSystemPatchSet.homePodCryptexStaging, FirmwareGuestSystemPatchSet.homePodCryptexClass, FirmwareGuestSystemPatchSet.homePodAdHocInstall])
+-            .union([FirmwareKernelCustomFirmwarePatchSet.tvTPROPagers, misTrustAuthPatch, FirmwareGuestSystemPatchSet.settingsRootRows, FirmwareGuestSystemPatchSet.settingsSoftwareUpdate, FirmwareGuestSystemPatchSet.tvTPRO, FirmwareGuestSystemPatchSet.tvOTAUserland, FirmwareGuestSystemPatchSet.tvSetupDisplayLookup, FirmwareGuestSystemPatchSet.tvSetupFocus, FirmwareGuestSystemPatchSet.tvLocalActivation, FirmwareGuestSystemPatchSet.tvLegacySetup])
++            .union([FirmwareKernelCustomFirmwarePatchSet.tvTPROPagers, misTrustAuthPatch, FirmwareGuestSystemPatchSet.settingsRootRows, FirmwareGuestSystemPatchSet.settingsSoftwareUpdate, FirmwareGuestSystemPatchSet.tvTPRO, FirmwareGuestSystemPatchSet.tvOTAUserland, FirmwareGuestSystemPatchSet.tvSetupDisplayLookup, FirmwareGuestSystemPatchSet.homeViewShellLookup, FirmwareGuestSystemPatchSet.tvSetupFocus, FirmwareGuestSystemPatchSet.tvLocalActivation, FirmwareGuestSystemPatchSet.tvLegacySetup])
+ 
+     /// ProMotion: the 120 Hz timing for the paravirtual display.
+     ///
+@@ -227,7 +227,7 @@ public enum FirmwarePatchSetCatalog {
+         freshly restored 26.4 guest does not survive. The HomePod-only top cap is off.
+         """,
+         patchSets: bundledReferences,
+-        selection: .block([FirmwareGuestSystemPatchSet.tvLegacySetup, FirmwareGuestSystemPatchSet.tvSetupDisplayLookup, FirmwareGuestSystemPatchSet.tvSetupFocus, FirmwareGuestSystemPatchSet.tvLocalActivation, FirmwareGuestSystemPatchSet.homePodTopCap, FirmwareGuestSystemPatchSet.homePodSetupBypass, FirmwareGuestSystemPatchSet.homePodAirPlayVM, FirmwareGuestSystemPatchSet.homePodAudioProduct, FirmwareGuestSystemPatchSet.homePodWelcome, FirmwareGuestSystemPatchSet.homePodSiriSpeech, FirmwareGuestSystemPatchSet.homePodOTAUserland, FirmwareGuestSystemPatchSet.homePodSoundGlow, FirmwareGuestSystemPatchSet.homePodCryptexStaging, FirmwareGuestSystemPatchSet.homePodCryptexClass, FirmwareGuestSystemPatchSet.homePodAdHocInstall]),
++        selection: .block([FirmwareGuestSystemPatchSet.tvLegacySetup, FirmwareGuestSystemPatchSet.tvSetupDisplayLookup, FirmwareGuestSystemPatchSet.homeViewShellLookup, FirmwareGuestSystemPatchSet.tvSetupFocus, FirmwareGuestSystemPatchSet.tvLocalActivation, FirmwareGuestSystemPatchSet.homePodTopCap, FirmwareGuestSystemPatchSet.homePodSetupBypass, FirmwareGuestSystemPatchSet.homePodAirPlayVM, FirmwareGuestSystemPatchSet.homePodAudioProduct, FirmwareGuestSystemPatchSet.homePodWelcome, FirmwareGuestSystemPatchSet.homePodSiriSpeech, FirmwareGuestSystemPatchSet.homePodOTAUserland, FirmwareGuestSystemPatchSet.homePodSoundGlow, FirmwareGuestSystemPatchSet.homePodCryptexStaging, FirmwareGuestSystemPatchSet.homePodCryptexClass, FirmwareGuestSystemPatchSet.homePodAdHocInstall]),
+     )
+ 
+     /// The iOS payloads, hooks and shared-cache patches an Apple TV guest has no
+@@ -330,7 +330,7 @@ public enum FirmwarePatchSetCatalog {
+         patchSets: bundledReferences,
+         selection: .block(
+             manualOnlyPatches
+-                .subtracting([FirmwareGuestSystemPatchSet.tvOTAUserland, FirmwareGuestSystemPatchSet.tvSetupDisplayLookup, FirmwareGuestSystemPatchSet.tvSetupFocus, FirmwareGuestSystemPatchSet.tvLocalActivation])
++                .subtracting([FirmwareGuestSystemPatchSet.tvOTAUserland, FirmwareGuestSystemPatchSet.tvSetupDisplayLookup, FirmwareGuestSystemPatchSet.homeViewShellLookup, FirmwareGuestSystemPatchSet.tvSetupFocus, FirmwareGuestSystemPatchSet.tvLocalActivation])
+                 .union(tvOSBlockedPatches.subtracting(["system-extensions-boot-gpu_bundle"]).subtracting(tvOS27UserlandPatches)),
+         ),
+     )
+diff --git a/VPhoneExecutable/VPhoneCommand/VPhoneCommand/Firmware/VPhoneCustomFirmwareInstaller.swift b/VPhoneExecutable/VPhoneCommand/VPhoneCommand/Firmware/VPhoneCustomFirmwareInstaller.swift
+index 13197b3..e330046 100644
+--- a/VPhoneExecutable/VPhoneCommand/VPhoneCommand/Firmware/VPhoneCustomFirmwareInstaller.swift
++++ b/VPhoneExecutable/VPhoneCommand/VPhoneCommand/Firmware/VPhoneCustomFirmwareInstaller.swift
+@@ -2182,6 +2182,20 @@ struct VPhoneCustomFirmwareInstaller {
+             }
+         }
+ 
++        let homeViewShellLookup = FirmwareGuestSystemPatchSet.homeViewShellLookup
++        isolate([homeViewShellLookup]) {
++            if on(homeViewShellLookup), guestDevice.family == .appleTV {
++                if try patchHomeViewShellLookup(system: system, work: work, backupSafe: backupSafe(homeViewShellLookup)) {
++                    live.insert(homeViewShellLookup)
++                }
++            } else if try Self.homeViewSandboxLookups.map({ try revertMachO(system: system, work: work, path: $0.path) }).contains(true) {
++                print("  [+] \(homeViewShellLookup): restored BreadBoard and userprofilesd from backup")
++            } else if priorGuest.contains(homeViewShellLookup) {
++                print("  [!] \(homeViewShellLookup): off now but no backup to revert (not revertible)")
++                live.insert(homeViewShellLookup)
++            }
++        }
++
+         if !isHomePod { isolate([personaPatch]) {
+             // Undo the experimental entitlement-only patch if this machine
+             // received it. Platform Protobox profiles ignore that exception.
+@@ -4023,6 +4037,46 @@ struct VPhoneCustomFirmwareInstaller {
+         return true
+     }
+ 
++    /// HomeView daemons that declare `temporary-sandbox`, and the lookups its
++    /// cloudOS 26.4 profile denies them that 27.2's allows (each seen failing
++    /// with error 159, "Sandbox restriction"). BreadBoard, the shell, takes
++    /// Campo's backboard/frontboard set; userprofilesd creates the guest
++    /// persona BreadBoard waits for, through UserManager.
++    static let homeViewSandboxLookups: [(path: String, services: [String])] = [
++        ("System/Library/CoreServices/BreadBoard.app/BreadBoard",
++         CustomFirmwareMachLookupExceptions.services + [
++             "com.apple.mobile.keybagd.UserManager.xpc",
++             "com.apple.telephonyutilities.callservicesdaemon.callcapabilities",
++         ]),
++        ("System/Library/PrivateFrameworks/UserProfilesDaemon.framework/Support/userprofilesd",
++         ["com.apple.mobile.keybagd.UserManager.xpc", "com.apple.homed.xpc"]),
++    ]
++
++    /// Adds ``homeViewSandboxLookups`` to each daemon's own mach-lookup
++    /// exceptions. False when the guest has no BreadBoard, which is every TV
++    /// but HomeView.
++    private func patchHomeViewShellLookup(system: VPhoneConfinedDirectory, work: WorkDirectory, backupSafe: Bool) throws -> Bool {
++        var patched = false
++        for (target, services) in Self.homeViewSandboxLookups {
++            let name = (target as NSString).lastPathComponent
++            guard let staged = try stageOptional(target, from: system, work: work, label: name) else { continue }
++            guard let source = try VPhoneSigner.entitlements(ofFileAt: staged).first(where: { !$0.isEmpty }) else {
++                throw ValidationError("\(name) has no readable entitlements")
++            }
++            let ent = work.file("\(name).entitlements")
++            try source.write(to: ent)
++            try CustomFirmwareMachLookupExceptions.merge(at: ent, services: services)
++            try backupEntitlementTarget(target, in: system, backupSafe: backupSafe)
++            try VPhoneSigner.sign(
++                fileAt: staged,
++                options: .init(entitlements: Data(contentsOf: ent), style: .appleAdHoc),
++            )
++            try system.replaceFile(target, fromFileAt: staged, mode: 0o755, owner: Self.guestOwner)
++            patched = true
++        }
++        return patched
++    }
++
+     // MARK: - xART volume
+ 
+     /// The patched seputil looks for the gigalocker as `AA.gl` rather than
+diff --git a/VPhoneKit/VPhoneArchiveKit/Transfer/VPhoneOTAArchive.swift b/VPhoneKit/VPhoneArchiveKit/Transfer/VPhoneOTAArchive.swift
+index f0af4b2..006eb64 100644
+--- a/VPhoneKit/VPhoneArchiveKit/Transfer/VPhoneOTAArchive.swift
++++ b/VPhoneKit/VPhoneArchiveKit/Transfer/VPhoneOTAArchive.swift
+@@ -758,7 +758,7 @@ public enum VPhoneOTAArchive {
+         }
+         // Check the archive's manifest, including renamed local sources.
+         // The new board is admitted only for the 27.2 userland.
+-        if device == .appleTV18_1, version != "27.2", version != "27.2.0" {
++        if device == .appleTV18_1 || device == .homeAccessory17_1, version != "27.2", version != "27.2.0" {
+             throw Error.unsupportedVersion(ota, productType: device.productType, version: version)
+         }
+         if let expected, build != expected { throw Error.wrongBuild(ota, build: build, expected: expected) }
+diff --git a/VPhoneKit/VPhoneCoreKit/Firmware/VPhoneFirmwareCatalog.swift b/VPhoneKit/VPhoneCoreKit/Firmware/VPhoneFirmwareCatalog.swift
+index f700671..aac96e3 100644
+--- a/VPhoneKit/VPhoneCoreKit/Firmware/VPhoneFirmwareCatalog.swift
++++ b/VPhoneKit/VPhoneCoreKit/Firmware/VPhoneFirmwareCatalog.swift
+@@ -595,6 +595,20 @@ public enum VPhoneFirmwareCatalog {
+             baseVersion: "26.6",
+             minimumHostMacOS: 27,
+         ),
++        // The Apple Wiki's HomeView 27.2 listing, 2026-10-31, gives only the
++        // asset's file name, not its CDN folder, so this cannot download: the
++        // archive must already be in the IPSW cache's `ota` folder under
++        // `fileName`. Like the Apple TV 4K's 27.x it goes over the HD's 26.6.
++        .init(
++            productType: "HomeAccessory17,1",
++            version: "27.2",
++            build: "24V514",
++            url: "91e6292d137569817d83050e9a21c6c93c25af6ab02fbaa7eeddb9ad5439b99a.aea",
++            size: 6_509_559_808,
++            key: "C6bVk4JwejgY6PfCJTX/nbrw/CtdphOG5EmsQMYe6As=",
++            baseVersion: "26.6",
++            minimumHostMacOS: VPhoneOTARelease.lzravenMinimumMacOS,
++        ),
+         // HomePod's newer software ships as a full ZIP OTA. Keep its own
+         // 27.0 restore IPSW as the base; the OTA supplies only the userland
+         // and board tree, while the boot chain remains cloudOS 26.4.
+diff --git a/VPhoneKit/VPhoneCoreKit/VirtualMachine/VPhoneGuestDevice.swift b/VPhoneKit/VPhoneCoreKit/VirtualMachine/VPhoneGuestDevice.swift
+index 0a3f21f..408a676 100644
+--- a/VPhoneKit/VPhoneCoreKit/VirtualMachine/VPhoneGuestDevice.swift
++++ b/VPhoneKit/VPhoneCoreKit/VirtualMachine/VPhoneGuestDevice.swift
+@@ -223,6 +223,19 @@ public struct VPhoneGuestDevice: Sendable, Equatable {
+         screen: .init(width: 3840, height: 2160, pixelsPerInch: 144, scale: 2.0),
+     )
+ 
++    /// HomeView (J490AP), research only: like the Apple TV 4K it ships no
++    /// IPSW, and its tvOS 27.2 ("HomeView Software") userland and device tree
++    /// come from a full OTA over the Apple TV HD restore base. The panel size
++    /// is not in the device tree; 1088x1088 follows its `applelogo@1088~home`
++    /// boot artwork and `artwork-scale-factor` 2, and 220 ppi its `dot-pitch`.
++    public static let homeAccessory17_1 = VPhoneGuestDevice(
++        family: .appleTV,
++        productType: "HomeAccessory17,1",
++        deviceClass: "j490ap",
++        productName: "HomeView",
++        screen: .init(width: 1088, height: 1088, pixelsPerInch: 220, scale: 2.0),
++    )
++
+     /// HomePod mini (B520AP). It has no physical display; this small virtual
+     /// canvas satisfies the VM graphics configuration and is not a panel
+     /// specification or a promise of a graphical HomePod interface.
+@@ -259,7 +272,7 @@ public struct VPhoneGuestDevice: Sendable, Equatable {
+     /// device tree and userland `fw prepare` takes from its OTA. Nil for every
+     /// device restored from its own IPSW.
+     public var restoreBase: VPhoneGuestDevice? {
+-        self == .appleTV14_1 || self == .appleTV18_1 ? .appleTV5_3 : nil
++        self == .appleTV14_1 || self == .appleTV18_1 || self == .homeAccessory17_1 ? .appleTV5_3 : nil
+     }
+ 
+     public static let known: [VPhoneGuestDevice] = [
+@@ -274,6 +287,7 @@ public struct VPhoneGuestDevice: Sendable, Equatable {
+         iPad16_3, iPad16_5,
+         iPad17_1, iPad17_3,
+         appleTV5_3, appleTV14_1, appleTV18_1,
++        homeAccessory17_1,
+         audioAccessory5_1,
+         watch7_18,
+     ]
+diff --git a/VPhoneLaunchpad/VPhoneLaunchpad/Machines/VPhoneLaunchpadPatchCatalog.swift b/VPhoneLaunchpad/VPhoneLaunchpad/Machines/VPhoneLaunchpadPatchCatalog.swift
+index ff95335..d1e3f80 100644
+--- a/VPhoneLaunchpad/VPhoneLaunchpad/Machines/VPhoneLaunchpadPatchCatalog.swift
++++ b/VPhoneLaunchpad/VPhoneLaunchpad/Machines/VPhoneLaunchpadPatchCatalog.swift
+@@ -305,7 +305,7 @@ nonisolated struct VPhoneLaunchpadPatchSelection: Hashable, Sendable {
+     static func defaultPreset(forDevice productType: String?) -> String {
+         switch productType {
+         case "AudioAccessory5,1": homePodMiniPreset
+-        case "AppleTV14,1", "AppleTV18,1": tvOS4KPreset
++        case "AppleTV14,1", "AppleTV18,1", "HomeAccessory17,1": tvOS4KPreset
+         case let type? where type.hasPrefix("AppleTV"): tvOSPreset
+         case let type? where type.hasPrefix("Watch"): watchOSPreset
+         // The iOS 18 research board kernels boot no other preset.
